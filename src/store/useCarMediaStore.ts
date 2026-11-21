@@ -1,17 +1,25 @@
 import {create} from 'zustand';
 import {CarMediaBridge} from '../services/CarMediaBridge';
-import {MediaQueueItem, CarConnectionStatus} from '../specs/NativeCarMediaBridge';
+import {MediaQueueItem, LocalVideoItem, CarConnectionStatus} from '../specs/NativeCarMediaBridge';
 
 export interface CarMediaState {
   currentTrack: MediaQueueItem | null;
   queue: MediaQueueItem[];
+  localVideos: LocalVideoItem[];
+  isLoadingVideos: boolean;
   isPlaying: boolean;
   preferredResolution: number; // 720 or 1080
+  currentWebUrl: string;
+  userAgentMode: 'desktop' | 'mobile' | 'tv';
   connectionStatus: CarConnectionStatus;
   activeNavigationDestination: {name: string; lat: number; lng: number} | null;
 
   // Actions
+  fetchLocalVideos: () => Promise<void>;
   playTrack: (item: MediaQueueItem) => Promise<void>;
+  loadWebUrlOnCar: (url: string, ua?: 'desktop' | 'mobile' | 'tv') => Promise<void>;
+  injectWebAction: (action: string) => Promise<void>;
+  setUserAgentMode: (mode: 'desktop' | 'mobile' | 'tv') => void;
   togglePlayPause: () => Promise<void>;
   skipNext: () => Promise<void>;
   skipPrevious: () => Promise<void>;
@@ -24,13 +32,28 @@ export interface CarMediaState {
 export const useCarMediaStore = create<CarMediaState>((set, get) => ({
   currentTrack: null,
   queue: [],
+  localVideos: [],
+  isLoadingVideos: false,
   isPlaying: false,
   preferredResolution: 1080,
+  currentWebUrl: 'https://m.youtube.com',
+  userAgentMode: 'desktop',
   connectionStatus: {
     isCarPlayConnected: false,
     isAndroidAutoConnected: false,
   },
   activeNavigationDestination: null,
+
+  fetchLocalVideos: async () => {
+    set({isLoadingVideos: true});
+    try {
+      const videos = await CarMediaBridge.scanLocalVideos();
+      set({localVideos: videos, isLoadingVideos: false});
+    } catch (e) {
+      console.error('Failed to scan local videos:', e);
+      set({isLoadingVideos: false});
+    }
+  },
 
   playTrack: async (item: MediaQueueItem) => {
     set({currentTrack: item, isPlaying: true});
@@ -39,6 +62,19 @@ export const useCarMediaStore = create<CarMediaState>((set, get) => ({
     } else {
       await CarMediaBridge.loadStream(item.uri, item.streamType || 'hls');
     }
+  },
+
+  loadWebUrlOnCar: async (url: string, ua = get().userAgentMode) => {
+    set({currentWebUrl: url});
+    await CarMediaBridge.loadWebUrl(url, ua);
+  },
+
+  injectWebAction: async (action: string) => {
+    await CarMediaBridge.injectWebControl(action);
+  },
+
+  setUserAgentMode: (mode) => {
+    set({userAgentMode: mode});
   },
 
   togglePlayPause: async () => {

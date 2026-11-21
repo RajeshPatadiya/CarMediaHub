@@ -1,59 +1,61 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import {useCarMediaStore} from '../store/useCarMediaStore';
-import {MediaQueueItem} from '../specs/NativeCarMediaBridge';
-
-const SAMPLE_VIDEOS: MediaQueueItem[] = [
-  {
-    id: 'local_1',
-    title: 'Dashcam Road Trip Recording (1080p)',
-    artist: 'Camera Loop #104',
-    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    streamType: 'local',
-    duration: 596,
-  },
-  {
-    id: 'local_2',
-    title: 'Automotive Showcase Video (MKV)',
-    artist: 'Vehicle Media Hub',
-    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    streamType: 'local',
-    duration: 653,
-  },
-  {
-    id: 'local_3',
-    title: 'Highway Cruise Landscape (MOV)',
-    artist: 'Scenic Drive',
-    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    streamType: 'local',
-    duration: 15,
-  },
-];
+import {LocalVideoItem, MediaQueueItem} from '../specs/NativeCarMediaBridge';
 
 export const LocalVideosScreen: React.FC = () => {
-  const {playTrack, currentTrack} = useCarMediaStore();
+  const {localVideos, isLoadingVideos, fetchLocalVideos, playTrack, currentTrack} = useCarMediaStore();
 
-  const renderItem = ({item}: {item: MediaQueueItem}) => {
+  useEffect(() => {
+    fetchLocalVideos();
+  }, [fetchLocalVideos]);
+
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+  };
+
+  const formatSize = (bytes: number): string => {
+    if (bytes <= 0) return '0 MB';
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(1)} MB`;
+  };
+
+  const handlePlay = (item: LocalVideoItem) => {
+    const queueItem: MediaQueueItem = {
+      id: item.id,
+      title: item.title,
+      artist: 'Local Media Storage',
+      uri: item.uri,
+      streamType: 'local',
+      duration: item.duration,
+    };
+    playTrack(queueItem);
+  };
+
+  const renderItem = ({item}: {item: LocalVideoItem}) => {
     const isCurrent = currentTrack?.id === item.id;
     return (
       <View style={[styles.itemCard, isCurrent && styles.activeItemCard]}>
         <View style={styles.itemInfo}>
-          <Text style={styles.itemTitle}>{item.title}</Text>
+          <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
           <Text style={styles.itemDetails}>
-            {item.artist} • {Math.floor((item.duration || 0) / 60)}m {(item.duration || 0) % 60}s
+            {formatDuration(item.duration)} • {formatSize(item.size)} • {item.mimeType.replace('video/', '').toUpperCase()}
           </Text>
         </View>
         <TouchableOpacity
-          style={styles.playButton}
-          onPress={() => playTrack(item)}>
+          style={[styles.playButton, isCurrent && styles.activePlayButton]}
+          onPress={() => handlePlay(item)}>
           <Text style={styles.playButtonText}>
-            {isCurrent ? 'Playing' : 'Cast to Car'}
+            {isCurrent ? '▶ Playing in Car' : 'Cast to Car'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -62,16 +64,41 @@ export const LocalVideosScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>LOCAL VIDEO VAULT</Text>
-      <Text style={styles.subtext}>
-        Hardware-accelerated zero-copy playback on vehicle head unit with auto-resume.
-      </Text>
-      <FlatList
-        data={SAMPLE_VIDEOS}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.list}
-      />
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.header}>REAL LOCAL VIDEO ENGINE</Text>
+          <Text style={styles.subtext}>
+            Hardware-accelerated MediaCodec / VideoToolbox decoding from MediaStore.
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.refreshBtn} onPress={fetchLocalVideos}>
+          <Text style={styles.refreshBtnText}>↻ Scan Storage</Text>
+        </TouchableOpacity>
+      </View>
+
+      {isLoadingVideos ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#238636" />
+          <Text style={styles.loadingText}>Scanning device storage for MP4, MKV, MOV files...</Text>
+        </View>
+      ) : localVideos.length === 0 ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyTitle}>No Local Videos Found</Text>
+          <Text style={styles.emptySub}>
+            Drop MP4, MKV, or MOV files into your device Movies/Downloads folder, then tap "Scan Storage".
+          </Text>
+          <TouchableOpacity style={styles.scanNowBtn} onPress={fetchLocalVideos}>
+            <Text style={styles.scanNowBtnText}>Scan Storage Now</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={localVideos}
+          keyExtractor={item => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.list}
+        />
+      )}
     </View>
   );
 };
@@ -82,6 +109,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A0E14',
     padding: 16,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   header: {
     color: '#8B949E',
     fontSize: 12,
@@ -90,17 +123,31 @@ const styles = StyleSheet.create({
   },
   subtext: {
     color: '#C9D1D9',
-    fontSize: 13,
-    marginVertical: 8,
-    marginBottom: 16,
+    fontSize: 12,
+    marginTop: 2,
+    maxWidth: 240,
+  },
+  refreshBtn: {
+    backgroundColor: '#21262D',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#30363D',
+  },
+  refreshBtnText: {
+    color: '#58A6FF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   list: {
-    gap: 12,
+    gap: 10,
+    paddingBottom: 20,
   },
   itemCard: {
     backgroundColor: '#161B22',
     borderRadius: 10,
-    padding: 16,
+    padding: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -113,11 +160,11 @@ const styles = StyleSheet.create({
   },
   itemInfo: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 10,
   },
   itemTitle: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   itemDetails: {
@@ -131,9 +178,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 6,
   },
+  activePlayButton: {
+    backgroundColor: '#1F6FEB',
+  },
   playButtonText: {
     color: '#FFFFFF',
     fontSize: 12,
+    fontWeight: '700',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  loadingText: {
+    color: '#8B949E',
+    fontSize: 13,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  emptySub: {
+    color: '#8B949E',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  scanNowBtn: {
+    backgroundColor: '#238636',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+  },
+  scanNowBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '700',
   },
 });

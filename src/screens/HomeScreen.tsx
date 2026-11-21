@@ -5,7 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
+  Alert,
 } from 'react-native';
 import {useCarMediaStore} from '../store/useCarMediaStore';
 
@@ -20,21 +20,31 @@ export const HomeScreen: React.FC = () => {
     skipPrevious,
     setResolution,
     refreshConnectionStatus,
+    loadWebUrlOnCar,
   } = useCarMediaStore();
 
   useEffect(() => {
     refreshConnectionStatus();
-    const interval = setInterval(refreshConnectionStatus, 3000);
+    const interval = setInterval(refreshConnectionStatus, 2500);
     return () => clearInterval(interval);
   }, [refreshConnectionStatus]);
 
+  const handleLaunchCarTrigger = () => {
+    loadWebUrlOnCar('https://m.youtube.com', 'mobile');
+    Alert.alert(
+      'Car Screen Trigger',
+      'Launched live video & web projection on your vehicle in-dash display!\n\nDeveloped by Rajesh Patadiya',
+      [{text: 'OK'}]
+    );
+  };
+
+  const isConnected = connectionStatus.isCarPlayConnected || connectionStatus.isAndroidAutoConnected;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <StatusBar barStyle="light-content" />
-
       {/* Automotive Connection Status Banner */}
       <View style={styles.statusCard}>
-        <Text style={styles.sectionHeader}>VEHICLE CONNECTION</Text>
+        <Text style={styles.sectionHeader}>VEHICLE INFOTAINMENT CONNECTION</Text>
         <View style={styles.statusRow}>
           <View style={styles.badgeContainer}>
             <View
@@ -47,7 +57,9 @@ export const HomeScreen: React.FC = () => {
                 },
               ]}
             />
-            <Text style={styles.badgeText}>Apple CarPlay</Text>
+            <Text style={styles.badgeText}>
+              CarPlay: {connectionStatus.isCarPlayConnected ? 'Connected' : 'Ready'}
+            </Text>
           </View>
 
           <View style={styles.badgeContainer}>
@@ -61,9 +73,17 @@ export const HomeScreen: React.FC = () => {
                 },
               ]}
             />
-            <Text style={styles.badgeText}>Android Auto</Text>
+            <Text style={styles.badgeText}>
+              Android Auto: {connectionStatus.isAndroidAutoConnected ? 'Connected' : 'Ready'}
+            </Text>
           </View>
         </View>
+
+        <TouchableOpacity style={styles.launchCarBtn} onPress={handleLaunchCarTrigger}>
+          <Text style={styles.launchCarBtnText}>
+            {isConnected ? '🚀 Live on Vehicle Screen' : '⚡ Launch on Car Screen'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Now Playing on Head Unit */}
@@ -73,7 +93,7 @@ export const HomeScreen: React.FC = () => {
           {currentTrack ? currentTrack.title : 'Ready to Stream'}
         </Text>
         <Text style={styles.trackSubtitle}>
-          {currentTrack ? currentTrack.artist || 'Local Video' : 'Select media to project to head unit'}
+          {currentTrack ? currentTrack.artist || 'Local Media Storage' : 'Select a local video or OTT channel to project to your vehicle screen'}
         </Text>
 
         <View style={styles.controlsRow}>
@@ -96,7 +116,7 @@ export const HomeScreen: React.FC = () => {
 
         {/* Resolution Selector */}
         <View style={styles.resolutionContainer}>
-          <Text style={styles.resolutionLabel}>Projection Quality:</Text>
+          <Text style={styles.resolutionLabel}>Anti-Lag Projection Quality:</Text>
           <View style={styles.resButtons}>
             <TouchableOpacity
               style={[
@@ -109,7 +129,7 @@ export const HomeScreen: React.FC = () => {
                   styles.resPillText,
                   preferredResolution === 720 && styles.resPillTextActive,
                 ]}>
-                720p (Eco/Low Latency)
+                720p (Eco / Zero-Lag)
               </Text>
             </TouchableOpacity>
 
@@ -124,7 +144,7 @@ export const HomeScreen: React.FC = () => {
                   styles.resPillText,
                   preferredResolution === 1080 && styles.resPillTextActive,
                 ]}>
-                1080p (FHD)
+                1080p (Full HD)
               </Text>
             </TouchableOpacity>
           </View>
@@ -133,20 +153,21 @@ export const HomeScreen: React.FC = () => {
 
       {/* Developer Attribution Card */}
       <View style={styles.devCard}>
-        <Text style={styles.devTag}>CARPLAY &amp; ANDROID AUTO INFOTAINMENT</Text>
+        <Text style={styles.devTag}>CARPLAY &amp; ANDROID AUTO ARCHITECTURE</Text>
         <Text style={styles.devTitle}>Developed by Rajesh Patadiya</Text>
         <Text style={styles.devSubtitle}>
-          Full OTT Theater (YouTube, Hotstar, Netflix, Prime Video, SonyLIV) with zero-lag in-car video playback.
+          Hardware MediaCodec &amp; VideoToolbox pipelines • VirtualDisplay Presentation • Full OTT Theater (YouTube, Hotstar, Netflix, Prime Video, Zee5).
         </Text>
       </View>
 
       {/* Quick Infotainment Stats */}
       <View style={styles.infoCard}>
-        <Text style={styles.sectionHeader}>AUDIO &amp; PROJECTION ENGINE</Text>
-        <Text style={styles.infoRow}>• Hardware Codec: MediaCodec / VideoToolbox</Text>
+        <Text style={styles.sectionHeader}>PRODUCTION HARDENING</Text>
+        <Text style={styles.infoRow}>• Media Engine: AndroidX Media3 ExoPlayer (Single Main-Thread)</Text>
         <Text style={styles.infoRow}>• Audio Focus: Active with Navigation Ducking (20%)</Text>
-        <Text style={styles.infoRow}>• Rotary &amp; Steering Wheel: MPRemote / MediaSession Active</Text>
-        <Text style={styles.infoRow}>• Architect: Rajesh Patadiya</Text>
+        <Text style={styles.infoRow}>• In-Car Touch: VirtualDisplay MotionEvent Injection Active</Text>
+        <Text style={styles.infoRow}>• Persistent DRM: Widevine EME &amp; CookieManager Flush</Text>
+        <Text style={styles.infoRow}>• Author: Rajesh Patadiya</Text>
       </View>
     </ScrollView>
   );
@@ -179,6 +200,7 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    marginBottom: 12,
   },
   badgeContainer: {
     flexDirection: 'row',
@@ -192,20 +214,31 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: '#F0F6FC',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
+  },
+  launchCarBtn: {
+    backgroundColor: '#1F6FEB',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  launchCarBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
   },
   playerCard: {
     backgroundColor: '#161B22',
     borderRadius: 12,
-    padding: 20,
+    padding: 18,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#30363D',
   },
   trackTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     marginTop: 4,
   },
@@ -213,13 +246,13 @@ const styles = StyleSheet.create({
     color: '#8B949E',
     fontSize: 13,
     marginTop: 4,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   controlsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 10,
   },
   controlBtn: {
     backgroundColor: '#21262D',
@@ -229,7 +262,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     backgroundColor: '#238636',
-    paddingHorizontal: 30,
+    paddingHorizontal: 28,
   },
   btnText: {
     color: '#F0F6FC',
@@ -241,8 +274,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   resolutionContainer: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 14,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: '#30363D',
   },

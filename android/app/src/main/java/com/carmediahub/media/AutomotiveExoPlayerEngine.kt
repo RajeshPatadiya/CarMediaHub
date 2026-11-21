@@ -52,6 +52,10 @@ class AutomotiveExoPlayerEngine private constructor(private val context: Context
         }
     }
 
+    fun getPlayerInstance(): ExoPlayer? {
+        return exoPlayer
+    }
+
     init {
         initPlayer()
         initAudioFocus()

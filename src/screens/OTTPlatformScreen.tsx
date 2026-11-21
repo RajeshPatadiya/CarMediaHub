@@ -9,144 +9,192 @@ import {
   Alert,
 } from 'react-native';
 import {useCarMediaStore} from '../store/useCarMediaStore';
-import {MediaQueueItem} from '../specs/NativeCarMediaBridge';
 
-interface OTTPlatform {
+interface OTTService {
   id: string;
   name: string;
   category: string;
   color: string;
-  defaultStreamUrl: string;
-  streamType: string;
+  url: string;
+  preferredUa: 'desktop' | 'mobile' | 'tv';
   description: string;
 }
 
-const SUPPORTED_PLATFORMS: OTTPlatform[] = [
+const OTT_SERVICES: OTTService[] = [
   {
     id: 'youtube',
     name: 'YouTube',
     category: 'Free & Premium Video',
     color: '#FF0000',
-    defaultStreamUrl: 'https://storage.googleapis.com/exoplayer-test-media-1/m3u8/adaptive.m3u8',
-    streamType: 'youtube',
-    description: 'Ad-friendly automotive streaming layer with 720p/1080p resolution switching.',
+    url: 'https://m.youtube.com',
+    preferredUa: 'mobile',
+    description: 'Ad-friendly touch interface with 720p/1080p resolution switching.',
   },
   {
     id: 'hotstar',
     name: 'Disney+ Hotstar',
-    category: 'Movies, Series & Live Sports',
+    category: 'Movies, Series & Sports',
     color: '#1F6FEB',
-    defaultStreamUrl: 'https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears.mpd',
-    streamType: 'hotstar',
-    description: 'Widevine & FairPlay DRM streaming with virtual projection fallback.',
+    url: 'https://www.hotstar.com',
+    preferredUa: 'desktop',
+    description: 'Widevine EME DRM streaming with persistent login sessions.',
   },
   {
     id: 'netflix',
     name: 'Netflix',
     category: 'Originals & Feature Films',
     color: '#E50914',
-    defaultStreamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    streamType: 'netflix',
-    description: 'Automotive web portal with session persistence and full-screen car playback.',
+    url: 'https://www.netflix.com',
+    preferredUa: 'desktop',
+    description: 'Hardware-accelerated web streaming on in-car display.',
   },
   {
     id: 'primevideo',
     name: 'Amazon Prime Video',
     category: 'Global Movies & TV',
     color: '#00A8E1',
-    defaultStreamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    streamType: 'primevideo',
-    description: 'Hardware-accelerated theater playback on CarPlay and Android Auto screens.',
+    url: 'https://www.primevideo.com',
+    preferredUa: 'desktop',
+    description: 'Full-screen theater mode with persistent login cookies.',
   },
   {
-    id: 'sonyliv',
-    name: 'SonyLIV',
-    category: 'Live Sports & Premium Originals',
-    color: '#F39C12',
-    defaultStreamUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    streamType: 'sonyliv',
-    description: 'Cricket, football, and regional cinema with zero-lag audio sync.',
+    id: 'zee5',
+    name: 'Zee5',
+    category: 'Regional Cinema & Live Shows',
+    color: '#8E44AD',
+    url: 'https://www.zee5.com',
+    preferredUa: 'desktop',
+    description: 'Zero-lag Indian regional & live streaming on car head unit.',
   },
 ];
 
 export const OTTPlatformScreen: React.FC = () => {
-  const {playTrack, currentTrack, isPlaying, togglePlayPause} = useCarMediaStore();
-  const [selectedPlatform, setSelectedPlatform] = useState<OTTPlatform>(SUPPORTED_PLATFORMS[0]);
-  const [customStreamUrl, setCustomStreamUrl] = useState('');
+  const {
+    currentWebUrl,
+    userAgentMode,
+    loadWebUrlOnCar,
+    injectWebAction,
+    setUserAgentMode,
+  } = useCarMediaStore();
 
-  const handleLaunchPlatform = (platform: OTTPlatform) => {
-    setSelectedPlatform(platform);
-    const mediaItem: MediaQueueItem = {
-      id: `ott_${platform.id}_${Date.now()}`,
-      title: `${platform.name} - In-Car Infotainment`,
-      artist: `Streamed via CarMediaHub by Rajesh Patadiya`,
-      uri: customStreamUrl.trim() || platform.defaultStreamUrl,
-      streamType: platform.streamType,
-    };
-    playTrack(mediaItem);
+  const [inputUrl, setInputUrl] = useState('https://m.youtube.com');
+
+  const handleLaunchService = (service: OTTService) => {
+    setInputUrl(service.url);
+    setUserAgentMode(service.preferredUa);
+    loadWebUrlOnCar(service.url, service.preferredUa);
     Alert.alert(
-      'Projecting to Car Screen',
-      `Launching ${platform.name} on your vehicle head unit with zero-lag hardware decoding.\n\nDeveloped by Rajesh Patadiya`,
+      'Streaming to Car Screen',
+      `Projecting ${service.name} to vehicle head unit.\n\nDeveloped by Rajesh Patadiya`,
       [{text: 'OK'}]
     );
   };
 
+  const handleCustomGo = () => {
+    let target = inputUrl.trim();
+    if (!target) return;
+    if (!target.startsWith('http://') && !target.startsWith('https://')) {
+      target = 'https://' + target;
+    }
+    loadWebUrlOnCar(target, userAgentMode);
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.header}>OTT ALL-IN-ONE THEATER</Text>
+      <Text style={styles.header}>OTT &amp; IN-CAR WEB BROWSER ENGINE</Text>
       <Text style={styles.subtext}>
-        Universal automotive streaming engine for YouTube, Hotstar, Prime Video, SonyLIV, and Netflix.
+        Universal web streaming container rendered onto the car head-unit Presentation layer with Widevine EME &amp; persistent cookies.
       </Text>
 
-      {/* Developer Badge */}
+      {/* Developer Attribution Card */}
       <View style={styles.devCard}>
-        <Text style={styles.devTag}>AUTOMOTIVE ARCHITECTURE</Text>
+        <Text style={styles.devTag}>VEHICLE PRESENTATION LAYER</Text>
         <Text style={styles.devName}>Developed by Rajesh Patadiya</Text>
         <Text style={styles.devSub}>
-          Native CarPlay AVPlayer (VideoToolbox) &amp; Android Auto Media3 (MediaCodec)
+          VirtualDisplay MotionEvent Forwarding • CookieManager Persistence • EME DRM Enabled
         </Text>
       </View>
 
-      {/* Custom Stream Override */}
-      <View style={styles.customCard}>
-        <Text style={styles.sectionTitle}>CUSTOM STREAM / DIRECT VOD LINK</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Optional: Paste direct HLS / DASH / MP4 manifest URL..."
-          placeholderTextColor="#8B949E"
-          value={customStreamUrl}
-          onChangeText={setCustomStreamUrl}
-        />
+      {/* In-Car Interactive URL Bar */}
+      <View style={styles.browserCard}>
+        <Text style={styles.sectionTitle}>CAR BROWSER ADDRESS BAR</Text>
+        <View style={styles.urlInputRow}>
+          <TextInput
+            style={styles.urlInput}
+            value={inputUrl}
+            onChangeText={setInputUrl}
+            placeholder="Enter URL or search..."
+            placeholderTextColor="#8B949E"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity style={styles.goBtn} onPress={handleCustomGo}>
+            <Text style={styles.goBtnText}>Go ➔</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* In-Car Web Control Bar */}
+        <View style={styles.webControlRow}>
+          <TouchableOpacity
+            style={styles.controlPill}
+            onPress={() => injectWebAction('back')}>
+            <Text style={styles.controlPillText}>◀ Back</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.controlPill}
+            onPress={() => injectWebAction('forward')}>
+            <Text style={styles.controlPillText}>Forward ▶</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.controlPill}
+            onPress={() => injectWebAction('reload')}>
+            <Text style={styles.controlPillText}>↻ Reload</Text>
+          </TouchableOpacity>
+
+          {/* User-Agent Selector */}
+          <TouchableOpacity
+            style={[styles.controlPill, styles.uaPill]}
+            onPress={() => {
+              const nextUa = userAgentMode === 'desktop' ? 'mobile' : userAgentMode === 'mobile' ? 'tv' : 'desktop';
+              setUserAgentMode(nextUa);
+              injectWebAction(nextUa);
+            }}>
+            <Text style={styles.uaPillText}>UA: {userAgentMode.toUpperCase()}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Platform Cards */}
-      <Text style={[styles.sectionTitle, {marginTop: 16, marginBottom: 10}]}>
-        AVAILABLE OTT CHANNELS
+      {/* Supported OTT Services */}
+      <Text style={[styles.sectionTitle, {marginTop: 18, marginBottom: 10}]}>
+        PRESET IN-CAR CHANNELS
       </Text>
-      {SUPPORTED_PLATFORMS.map(platform => {
-        const isCurrent = currentTrack?.streamType === platform.streamType;
+
+      {OTT_SERVICES.map(service => {
+        const isCurrent = currentWebUrl === service.url;
         return (
           <View
-            key={platform.id}
+            key={service.id}
             style={[
-              styles.platformCard,
-              {borderLeftColor: platform.color, borderLeftWidth: 4},
-              isCurrent && styles.activePlatformCard,
+              styles.serviceCard,
+              {borderLeftColor: service.color, borderLeftWidth: 4},
+              isCurrent && styles.activeServiceCard,
             ]}>
-            <View style={styles.cardHeader}>
+            <View style={styles.serviceHeader}>
               <View>
-                <Text style={styles.platformName}>{platform.name}</Text>
-                <Text style={styles.platformCategory}>{platform.category}</Text>
+                <Text style={styles.serviceName}>{service.name}</Text>
+                <Text style={styles.serviceCategory}>{service.category}</Text>
               </View>
               <TouchableOpacity
-                style={[styles.launchBtn, {backgroundColor: platform.color}]}
-                onPress={() => handleLaunchPlatform(platform)}>
+                style={[styles.launchBtn, {backgroundColor: service.color}]}
+                onPress={() => handleLaunchService(service)}>
                 <Text style={styles.launchBtnText}>
-                  {isCurrent && isPlaying ? 'Playing in Car' : 'Play on Head Unit'}
+                  {isCurrent ? 'Active on Car' : 'Play on Head Unit'}
                 </Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.platformDesc}>{platform.description}</Text>
+            <Text style={styles.serviceDesc}>{service.description}</Text>
           </View>
         );
       })}
@@ -200,7 +248,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
   },
-  customCard: {
+  browserCard: {
     backgroundColor: '#161B22',
     borderRadius: 10,
     padding: 14,
@@ -213,7 +261,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.8,
   },
-  input: {
+  urlInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  urlInput: {
+    flex: 1,
     backgroundColor: '#0D1117',
     color: '#FFFFFF',
     borderRadius: 6,
@@ -222,9 +276,48 @@ const styles = StyleSheet.create({
     fontSize: 13,
     borderWidth: 1,
     borderColor: '#30363D',
-    marginTop: 8,
   },
-  platformCard: {
+  goBtn: {
+    backgroundColor: '#1F6FEB',
+    borderRadius: 6,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  goBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  webControlRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 10,
+  },
+  controlPill: {
+    flex: 1,
+    backgroundColor: '#21262D',
+    paddingVertical: 7,
+    alignItems: 'center',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#30363D',
+  },
+  controlPillText: {
+    color: '#F0F6FC',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  uaPill: {
+    backgroundColor: '#1E293B',
+    borderColor: '#38BDF8',
+  },
+  uaPillText: {
+    color: '#38BDF8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  serviceCard: {
     backgroundColor: '#161B22',
     borderRadius: 10,
     padding: 14,
@@ -232,22 +325,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#30363D',
   },
-  activePlatformCard: {
+  activeServiceCard: {
     backgroundColor: '#0D2214',
     borderColor: '#238636',
   },
-  cardHeader: {
+  serviceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  platformName: {
+  serviceName: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
-  platformCategory: {
+  serviceCategory: {
     color: '#8B949E',
     fontSize: 11,
     marginTop: 2,
@@ -262,7 +355,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  platformDesc: {
+  serviceDesc: {
     color: '#8B949E',
     fontSize: 12,
     lineHeight: 18,

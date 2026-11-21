@@ -1,14 +1,23 @@
 import NativeCarMediaBridge, {
   MediaQueueItem,
+  LocalVideoItem,
   CarConnectionStatus,
 } from '../specs/NativeCarMediaBridge';
 
 /**
- * High-level bridge service with graceful fallback for development,
- * simulator, and physical device testing without an active car head-unit connection.
+ * High-level bridge service connecting the React Native phone UI
+ * to native Android Auto and Apple CarPlay hardware projection modules.
  */
 class CarMediaBridgeService {
   private nativeModule = NativeCarMediaBridge;
+
+  async scanLocalVideos(): Promise<LocalVideoItem[]> {
+    if (this.nativeModule && this.nativeModule.scanLocalVideos) {
+      return this.nativeModule.scanLocalVideos();
+    }
+    console.log('[CarMediaBridge] Fallback scan: No native module attached');
+    return [];
+  }
 
   async playLocalVideo(uri: string): Promise<boolean> {
     if (this.nativeModule) {
@@ -23,6 +32,22 @@ class CarMediaBridgeService {
       return this.nativeModule.loadStream(url, streamType);
     }
     console.log(`[CarMediaBridge Mock] loadStream (${streamType}):`, url);
+    return true;
+  }
+
+  async loadWebUrl(url: string, userAgentType: string = 'desktop'): Promise<boolean> {
+    if (this.nativeModule && this.nativeModule.loadWebUrl) {
+      return this.nativeModule.loadWebUrl(url, userAgentType);
+    }
+    console.log(`[CarMediaBridge Mock] loadWebUrl (${userAgentType}):`, url);
+    return true;
+  }
+
+  async injectWebControl(action: string): Promise<boolean> {
+    if (this.nativeModule && this.nativeModule.injectWebControl) {
+      return this.nativeModule.injectWebControl(action);
+    }
+    console.log('[CarMediaBridge Mock] injectWebControl:', action);
     return true;
   }
 

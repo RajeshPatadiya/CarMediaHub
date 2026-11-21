@@ -132,4 +132,7 @@ dependencies {
     // Concurrency & Lifecycle
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("androidx.lifecycle:lifecycle-service:2.8.6")
+
+    // AndroidX WebKit for OTT Widevine EME & WebChromeClient
+    implementation("androidx.webkit:webkit:1.12.0")
 }
