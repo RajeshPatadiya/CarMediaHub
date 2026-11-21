@@ -1,0 +1,84 @@
+name: Build iOS IPA & Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android Auto APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: CarMediaHub/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: CarMediaHub
+        run: npm ci
+
+      - name: Build Android APK
+        working-directory: CarMediaHub/android
+        run: ./gradlew assembleDebug
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMediaHub-Android-Auto-debug.apk
+          path: CarMediaHub/android/app/build/outputs/apk/debug/app-debug.apk
+
+  build-ios:
+    name: Build Apple CarPlay IPA
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: CarMediaHub/package-lock.json
+
+      - name: Install Node Dependencies
+        working-directory: CarMediaHub
+        run: npm ci
+
+      - name: Install CocoaPods
+        working-directory: CarMediaHub/ios
+        run: pod install
+
+      - name: Build and Archive iOS App
+        working-directory: CarMediaHub/ios
+        run: |
+          xcodebuild archive \
+            -workspace CarMediaHub.xcworkspace \
+            -scheme CarMediaHub \
+            -configuration Debug \
+            -archivePath build/CarMediaHub.xcarchive \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package IPA (Unsigned Payload)
+        working-directory: CarMediaHub/ios
+        run: |
+          mkdir -p build/Payload
+          cp -r build/CarMediaHub.xcarchive/Products/Applications/CarMediaHub.app build/Payload/
+          cd build && zip -r CarMediaHub-CarPlay-debug.ipa Payload
+
+      - name: Upload iOS IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMediaHub-CarPlay-debug.ipa
+          path: CarMediaHub/ios/build/CarMediaHub-CarPlay-debug.ipa

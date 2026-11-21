@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">CarMediaHub</string>
+    <string name="car_app_name">CarMedia Hub</string>
+    <string name="action_play">Play</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_source">Source</string>
+    <string name="action_res_toggle">720p / 1080p</string>
+</resources>

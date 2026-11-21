@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<automotiveApp>
+    <!-- Declares support for Car App Library Navigation and Media templates -->
+    <uses name="template" />
+    <uses name="navigation" />
+    <uses name="media" />
+</automotiveApp>
